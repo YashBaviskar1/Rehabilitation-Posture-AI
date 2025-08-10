@@ -1,6 +1,6 @@
 ### Frontend Stuff
 
-make sure whie adding files in backend branch to
+make sure whie adding files in backend branch here
 
 ```bash
 git checkout frontend
