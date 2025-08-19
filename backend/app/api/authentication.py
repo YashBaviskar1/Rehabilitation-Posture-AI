@@ -110,7 +110,7 @@ async def register(request_data: schemas.Register_Request, db:Session = Depends(
 
             raise HTTPException(
                 status_code=status.HTTP_409_CONFLICT,
-                detail="Usernam taken"
+                detail="Username taken"
             )
         else:
             raise HTTPException(

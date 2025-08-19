@@ -8,3 +8,6 @@ class Register_Request(BaseModel):
     username: str
     password: str
     role: str
+
+class Update_User(BaseModel):
+    age: int | None
