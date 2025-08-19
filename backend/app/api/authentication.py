@@ -1,4 +1,4 @@
-from fastapi import APIRouter, HTTPException, status, Depends
+from fastapi import APIRouter, HTTPException, status, Depends, Response
 from fastapi.responses import JSONResponse
 from app import schemas, models
 from app.db import get_db
@@ -33,6 +33,18 @@ def hash_password(password: str) -> str:
 
 
 
+
+
+@router.get("/logout")
+async def logout():
+
+    response = JSONResponse({"status": "ok"})
+    response.delete_cookie("access_token")
+
+    return response
+
+
+
 @router.post("/login")
 async def login(request_data: schemas.Login_Request, db: Session = Depends(get_db)):
    
@@ -42,11 +54,22 @@ async def login(request_data: schemas.Login_Request, db: Session = Depends(get_d
     if not user or not password_context.verify(request_data.password, user.password):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Incorrect username or password"
+            detail="Incorrect username or password :-("
         )
     
     access_token = create_access_token(data={"sub": user.username, "role": user.role})
-    return JSONResponse({"access_token": access_token}, status_code=status.HTTP_200_OK)
+
+    response = JSONResponse(content={"access_token": access_token})
+    response.status_code = status.HTTP_200_OK
+    response.set_cookie(
+        key="access_token",
+        value=access_token,
+        samesite="strict",
+        httponly=True,
+        secure=True
+    )
+    
+    return response
 
 
 
