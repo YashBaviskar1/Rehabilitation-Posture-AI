@@ -8,7 +8,7 @@ from datetime import datetime, timedelta
 from typing import Optional
 from dotenv import load_dotenv
 from app import models, schemas, db
-from app.api import authentication
+from app.api import authentication, users
 import os
 load_dotenv()
 
@@ -57,4 +57,10 @@ def middleware():
 
 
 app.include_router(prefix="/api", router=authentication.router)
+
+app.include_router(prefix="/api", router=users.router)
+
+@app.get("/")
+async def health():
+    return {"status": "Healthy!"}
 
