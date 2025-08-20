@@ -11,3 +11,10 @@ class Register_Request(BaseModel):
 
 class Update_User(BaseModel):
     age: int | None
+
+class Create_Exercise(BaseModel):
+    title: str
+
+class Assign_Exercise(BaseModel):
+    patient_id: int
+    exercise_ids: list[int]
