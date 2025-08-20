@@ -21,13 +21,23 @@ async def get_patients_list(user: models.User = Depends(get_current_user), db: S
 
     all_user_objects = db.query(models.User).filter(models.User.role == "patient").all()
 
-    all_user_list = [
-        {
-            "id": patient.id,
-            "username": patient.username,
-            "age": patient.age or "NA",
-        } for patient in all_user_objects
-    ]
+    all_user_list = []
+    for patient in all_user_objects:
+        #Serialise exercises for current patient
+        patient_exercises = [
+            {
+                "id": ass.exercise.id,
+                "title": ass.exercise.title,
+            }
+            for ass in patient.assignments
+        ]
+        #Create and add patient to list by serialising
+        all_user_list.append({
+                "id": patient.id,
+                "username": patient.username,
+                "age": patient.age or "NA",
+                "exercises" : patient_exercises
+            })
 
     return JSONResponse(all_user_list)
 
@@ -37,9 +47,22 @@ async def get_patients_list(user: models.User = Depends(get_current_user), db: S
 async def get_patient_profile(user: models.User = Depends(get_current_user)):
 
     if user.role != "patient":
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="No patient found with given ID")    
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="No patient found with given ID")
+    
+    patient_exercises = [
+            {
+                "id": ass.exercise.id,
+                "title": ass.exercise.title,
+            }
+            for ass in user.assignments
+        ]
 
-    response = JSONResponse({"id": user.id, "username": user.username, "age": user.age})
+    response = JSONResponse({
+            "id": user.id,
+            "username": user.username,
+            "age": user.age,
+            "exercises": patient_exercises
+            })
 
     return response
 
@@ -69,16 +92,31 @@ async def get_patient_by_id(patient_id: int, user: models.User = Depends(get_cur
     if user.role != "doctor":
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="You are not authorised for this")
 
+
     patient: models.User = db.query(models.User).filter(models.User.id == patient_id).first()
-    
     if not patient:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="No patient found with given ID")
-    
     if patient.role != "patient":
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="No patient found with given ID")
 
-    return JSONResponse({"id": patient.id, "username": patient.username, "role": patient.role})
 
+    patient_exercises = [
+            {
+                "id": ass.exercise.id,
+                "title": ass.exercise.title,
+            }
+            for ass in patient.assignments
+        ]
+
+
+    response = JSONResponse({
+            "id": patient.id,
+            "username": patient.username,
+            "role": patient.role,
+            "exercises": patient_exercises
+         })
+
+    return response
 
 
 @router.get("/doctors")
