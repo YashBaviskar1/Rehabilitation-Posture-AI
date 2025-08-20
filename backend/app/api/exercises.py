@@ -85,10 +85,16 @@ async def assign_exercise_to_patient(request_data: schemas.Assign_Exercise, user
     if not patient or patient.role == "doctor":
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="No patient found with given ID")
     
+    #Get already assigned exercises of patient
+    assigned_exercises = [exercise.exercise_id for exercise in patient.assignments]
     
     try:
         #Assign all exercises if they exist
         for exercise_id in request_data.exercise_ids:
+
+            if exercise_id in assigned_exercises:
+                continue
+
             exercise = db.query(models.Exercises).filter(models.Exercises.id == exercise_id).first()
             #Make sure the exercises exist
             if not exercise:
