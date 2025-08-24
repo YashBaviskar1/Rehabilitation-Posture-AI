@@ -2,3 +2,5 @@
 venv
 test.py
 *pycache*
+images
+dist

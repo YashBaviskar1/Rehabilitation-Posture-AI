@@ -1,4 +1,7 @@
 from fastapi import FastAPI, Depends, HTTPException, status, Request
+from fastapi.staticfiles import StaticFiles
+from fastapi.responses import FileResponse
+from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 from pydantic import BaseModel
@@ -8,7 +11,8 @@ from datetime import datetime, timedelta
 from typing import Optional
 from dotenv import load_dotenv
 from app import models, schemas, db
-from app.api import authentication, users, exercises
+from app.api import authentication, users, exercises, image_processing
+import uvicorn
 import os
 load_dotenv()
 
@@ -22,6 +26,14 @@ oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/auth/login")
 # Create the database tables
 models.Base.metadata.create_all(bind=db.engine)
 
+# Allow all origins (not safe for production!)
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],  # Allows all origins
+    allow_credentials=True,
+    allow_methods=["*"],  # Allows all methods (GET, POST, etc.)
+    allow_headers=["*"],  # Allows all headers
+)
 
 def middleware():
 # Custom Middleware Example
@@ -62,7 +74,19 @@ app.include_router(prefix="/api", router=users.router)
 
 app.include_router(prefix="/api", router=exercises.router)
 
-@app.get("/")
+app.include_router(prefix="/api", router=image_processing.router)
+
+@app.get("/health")
 async def health():
     return {"status": "Healthy!"}
 
+
+# Mount the React build folder
+app.mount("/", StaticFiles(directory="dist/", html=True), name="static")
+@app.get("/{full_path:path}")
+async def serve_react_app():
+    return FileResponse("dist/index.html")
+
+
+if __name__ == "__main__":
+    uvicorn.run("app.main:app", host="0.0.0.0", port=8000, reload=True)
