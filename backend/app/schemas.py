@@ -5,6 +5,7 @@ class Login_Request(BaseModel):
     password: str
 
 class Register_Request(BaseModel):
+    name: str
     username: str
     password: str
     role: str

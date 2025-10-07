@@ -59,14 +59,25 @@ async def login(request_data: schemas.Login_Request, db: Session = Depends(get_d
     
     access_token = create_access_token(data={"sub": user.username, "role": user.role})
 
-    response = JSONResponse(content={"access_token": access_token})
+    return_payload = {"username": user.username, "role": user.role, "name": user.name}
+    if user.role == 'patient':
+        patient_exercises = [
+                {
+                    "id": ass.exercise.id,
+                    "title": ass.exercise.title,
+                }
+                for ass in user.assignments
+            ]
+        return_payload["exercises"] = patient_exercises
+
+    response = JSONResponse(content=return_payload)
     response.status_code = status.HTTP_200_OK
     response.set_cookie(
         key="access_token",
         value=access_token,
-        samesite="strict",
+        samesite="lax",
         httponly=True,
-        secure=True
+        secure=False
     )
     
     return response
@@ -92,6 +103,7 @@ async def register(request_data: schemas.Register_Request, db:Session = Depends(
     
     #create new user
     new_user = models.User(
+        name = request_data.name,
         username = request_data.username,
         password = hash_password(request_data.password),
         role = request_data.role,

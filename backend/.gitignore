@@ -4,3 +4,4 @@ test.py
 *pycache*
 images
 dist
+yolov8n.pt
