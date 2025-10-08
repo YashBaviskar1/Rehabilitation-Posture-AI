@@ -16,8 +16,10 @@ import {
   ChevronRight,
   LogOut,
 } from "lucide-react";
-
 import { useEffect, useState } from "react";
+import axios from "axios";
+import ScoreLineChart from "./GraphComponent";
+const isDev = import.meta.env.MODE == "development";
 
 export default function PatientComponent({
   selectedExercise,
@@ -58,6 +60,7 @@ export default function PatientComponent({
 
   const [isExercising, setIsExercising] = useState(false);
   const [patient, setPatient] = useState(null);
+  const [scores, setScores] = useState([]);
 
   const handleStartExercise = (id) => {
     setSelectedExercise(id);
@@ -68,34 +71,92 @@ export default function PatientComponent({
     setIsExercising(false);
   };
 
+  async function getScores() {
+    const monthNames = [
+      "Jan",
+      "Feb",
+      "Mar",
+      "Apr",
+      "May",
+      "Jun",
+      "Jul",
+      "Aug",
+      "Sep",
+      "Oct",
+      "Nov",
+      "Dec",
+    ];
+
+    await axios
+      .get(
+        `${isDev ? "http://localhost:8000" : ""}/api/scores/patient/${
+          patient.id
+        }`,
+        {
+          withCredentials: true,
+        }
+      )
+      .then((res) => {
+        console.log("Get Scores:\n");
+        console.log(res.data);
+        let tempScores = res.data;
+        tempScores.forEach((_, i) => {
+          const dateObj = new Date(_.timestamp);
+
+          const date = dateObj.getDate(); // day of the month (1-31)
+          const month = dateObj.getMonth(); // month (0-11) so +1 for 1-12
+          const hours = dateObj.getHours();
+          const minutes = dateObj.getMinutes().toString().padStart(2, "0");
+
+          const formatted = `${date} ${
+            monthNames[dateObj.getMonth()]
+          }: ${hours}:${minutes}`;
+
+          _.timestamp = formatted;
+        });
+        setScores(tempScores);
+      })
+      .catch((error) => {
+        console.log("Get Scores:\n");
+        console.log(error);
+      });
+  }
+
   useEffect(() => {
     const tempUser = JSON.parse(localStorage.getItem("user"));
     setPatient(tempUser);
   }, []);
 
+  useEffect(() => {
+    if (!patient) return;
+    getScores();
+  }, [patient]);
+
   return (
     <>
       {!selectedExercise && (
-        <section>
-          <h3 className="text-xl font-bold mb-4">Today's Exercises</h3>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {patient &&
-              patient.exercises.map((ex) => (
-                <div
-                  key={ex.id}
-                  className="p-4 border rounded-xl bg-white shadow-sm border-gray-300"
-                >
-                  <div className="flex justify-between items-start">
-                    <div>
-                      <h4 className="text-xl font-bold">{ex.title}</h4>
-                      {/* <div className="text-sm text-gray-600 flex items-center gap-1">
+        <>
+          {/* Exercises List */}
+          <section className="mb-8">
+            <h3 className="text-xl font-bold mb-4">Today's Exercises</h3>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {patient &&
+                patient.exercises.map((ex) => (
+                  <div
+                    key={ex.id}
+                    className="p-4 border rounded-xl bg-white shadow-sm border-gray-300"
+                  >
+                    <div className="flex justify-between items-start">
+                      <div>
+                        <h4 className="text-xl font-bold">{ex.title}</h4>
+                        {/* <div className="text-sm text-gray-600 flex items-center gap-1">
                       <Clock className="w-4 h-4" /> {ex.duration}
                     </div> */}
+                      </div>
+                      {/* {ex.completed && <CheckCircle className="text-green-500" />} */}
                     </div>
-                    {/* {ex.completed && <CheckCircle className="text-green-500" />} */}
-                  </div>
 
-                  {/* <div className="mt-3 space-y-1 text-sm">
+                    {/* <div className="mt-3 space-y-1 text-sm">
                   <p>
                     Sets x Reps:{" "}
                     <strong>
@@ -111,17 +172,23 @@ export default function PatientComponent({
                   </p>
                 </div> */}
 
-                  <button
-                    className={`mt-3 w-full py-2 px-4 rounded text-white ${
-                      !ex.title ? "bg-gray-500" : "bg-blue-600"
-                    }`}
-                  >
-                    {ex.completed ? "Practice Again" : "Start Exercise"}
-                  </button>
-                </div>
-              ))}
-          </div>
-        </section>
+                    <button
+                      className={`mt-3 w-full py-2 px-4 rounded text-white ${
+                        !ex.title ? "bg-gray-500" : "bg-blue-600"
+                      }`}
+                    >
+                      {ex.completed ? "Practice Again" : "Start Exercise"}
+                    </button>
+                  </div>
+                ))}
+            </div>
+          </section>
+          {/* Scores Graph */}
+          <section className="">
+            <h1 className="text-xl font-bold mb-4">Score History</h1>
+            <ScoreLineChart scores={scores} />
+          </section>
+        </>
       )}
 
       {selectedExercise && (

@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, ForeignKey
+from sqlalchemy import Column, Integer, String, ForeignKey, BigInteger
 from sqlalchemy.orm import relationship
 from app.db import Base
 
@@ -13,6 +13,7 @@ class User(Base):
     age = Column(Integer, nullable=True)
 
     assignments = relationship("User_Exercises", back_populates="user")
+    exercise_scores = relationship("UserExerciseScore", back_populates="user")
 
 
 
@@ -22,6 +23,7 @@ class Exercises(Base):
     title = Column(String(100), unique=True)
 
     assignments = relationship("User_Exercises", back_populates="exercise")
+    user_scores = relationship("UserExerciseScore", back_populates="exercise")
 
 
 
@@ -33,4 +35,20 @@ class User_Exercises(Base):
 
     user = relationship("User", back_populates="assignments")
     exercise = relationship("Exercises", back_populates="assignments")
+
+
+
+class UserExerciseScore(Base):
+    __tablename__ = 'user_exercise_scores'
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    exercise_id = Column(Integer, ForeignKey("exercises.id"), nullable=False)
+
+    score = Column(Integer, nullable=False)
+    timestamp = Column(BigInteger, nullable=False)  # store in milliseconds
+
+    # Optional: add relationships if needed
+    user = relationship("User", back_populates="exercise_scores")
+    exercise = relationship("Exercises", back_populates="user_scores")
 

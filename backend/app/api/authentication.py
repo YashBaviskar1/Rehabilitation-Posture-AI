@@ -59,7 +59,7 @@ async def login(request_data: schemas.Login_Request, db: Session = Depends(get_d
     
     access_token = create_access_token(data={"sub": user.username, "role": user.role})
 
-    return_payload = {"username": user.username, "role": user.role, "name": user.name}
+    return_payload = {"username": user.username, "role": user.role, "name": user.name, "id": user.id}
     if user.role == 'patient':
         patient_exercises = [
                 {
