@@ -19,3 +19,7 @@ class Create_Exercise(BaseModel):
 class Assign_Exercise(BaseModel):
     patient_id: int
     exercise_ids: list[int]
+
+class Deassign_Exercise(BaseModel):
+    patient_id: int
+    exercise_ids: list[int]

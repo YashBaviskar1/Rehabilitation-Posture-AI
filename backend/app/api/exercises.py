@@ -120,3 +120,55 @@ async def assign_exercise_to_patient(request_data: schemas.Assign_Exercise, user
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=str(e)
         )
+
+@router.delete("/deassign")
+async def deassign_exercise_from_patient(request_data: schemas.Deassign_Exercise, user: models.User = Depends(get_current_user), db: Session = Depends(get_db)):
+
+    if user.role != "doctor":
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="You are not authorised for this")
+    
+    #Make sure the user exists with the given ID exists and is a patient 
+    patient = db.query(models.User).filter(models.User.id == request_data.patient_id).first()
+    if not patient or patient.role == "doctor":
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="No patient found with given ID")
+    
+    if len(request_data.exercise_ids) == 0:
+        raise HTTPException(status_code=400, detail="No exercise IDs provided.")
+
+    try:
+        # Query existing assignments
+        existing_assignments = db.query(models.User_Exercises).filter(
+            models.User_Exercises.user_id == patient.id,
+            models.User_Exercises.exercise_id.in_(request_data.exercise_ids)
+        ).all()
+
+        # Map found exercise_ids for comparison
+        assigned_exercise_ids = {assignment.exercise_id for assignment in existing_assignments}
+
+        # Find which requested exercise_ids are not actually assigned
+        not_assigned = [eid for eid in request_data.exercise_ids if eid not in assigned_exercise_ids]
+
+        # If none are assigned, raise an error
+        if not existing_assignments:
+            raise HTTPException(
+                status_code=404,
+                detail="None of the given exercises are assigned to this user."
+            )
+        
+        # Delete assigned exercises
+        for assignment in existing_assignments:
+            db.delete(assignment)
+        
+
+        #commit changes
+        db.commit()
+        return JSONResponse({"status":"ok"})
+            
+    except Exception as e:
+        db.rollback()
+        #handle exceptions that may occur.
+        print(f"\n\nError in exercise assignment:\n{str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(e)
+        )

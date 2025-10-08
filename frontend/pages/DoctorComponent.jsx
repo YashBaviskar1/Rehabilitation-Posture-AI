@@ -8,7 +8,11 @@ export default function DoctorComponent() {
   const [exercises, setExercises] = useState([]);
   const [open, setOpen] = useState(false);
   const [currPatient, setCurrPatient] = useState(null);
-  const [addExerciseObj, setAddExerciseObj] = useState({
+  const [exerciseObj, setExerciseObj] = useState({
+    id: null,
+    title: "",
+  });
+  const [removeExerciseObj, setRemoveExerciseObj] = useState({
     id: null,
     title: "",
   });
@@ -48,7 +52,7 @@ export default function DoctorComponent() {
   async function addExercise() {
     const addExercisePayload = {
       patient_id: currPatient,
-      exercise_ids: [addExerciseObj.id],
+      exercise_ids: [exerciseObj.id],
     };
 
     await axios
@@ -62,9 +66,43 @@ export default function DoctorComponent() {
       .then((res) => {
         console.log("Add Exercises Dashboard:\n");
         console.log(res.data);
+        window.location.reload();
       })
       .catch((error) => {
         console.log("Add Exercises Dashboard:\n");
+        console.log(error);
+      });
+  }
+
+  async function removeExercise() {
+    const removeExercisePayload = {
+      patient_id: currPatient,
+      exercise_ids: [exerciseObj.id],
+    };
+
+    await axios
+      .delete(
+        `${isDev ? "http://localhost:8000" : ""}/api/exercises/deassign`,
+        {
+          data: removeExercisePayload,
+          withCredentials: true,
+        }
+      )
+      .then((res) => {
+        console.log("Remove Exercises Dashboard:\n");
+        console.log(res.data);
+        window.location.reload();
+      })
+      .catch((error) => {
+        if (
+          error.response.data.detail.includes(
+            "one of the given exercises are assigned to this user"
+          )
+        ) {
+          window.alert(error.response.data.detail);
+          return;
+        }
+        console.log("Remove Exercises Dashboard:\n");
         console.log(error);
       });
   }
@@ -104,11 +142,12 @@ export default function DoctorComponent() {
               </p>
               {currPatient == pt.id && (
                 <div className="bg-gray-200 flex flex-wrap pl-1 py-2 rounded-md gap-2 relative">
-                  <p className="font-bold p-[0.5px]">Add Exercises: </p>
+                  {/* Add Exercises Section */}
+                  <p className="font-bold p-[0.5px]">Exercises: </p>
                   <input
                     placeholder="Exercise IDs"
-                    className=" border-gray-500 m-auto border-2 border-solid p-[0.5px]"
-                    value={addExerciseObj.title}
+                    className=" border-gray-500 m-auto border-2 border-solid p-[0.5px] w-full"
+                    value={exerciseObj.title}
                     readOnly
                     onFocus={() => {
                       setOpen(true);
@@ -124,6 +163,14 @@ export default function DoctorComponent() {
                     onClick={addExercise}
                   >
                     Add
+                  </button>
+                  <button
+                    className={`w-[25%] rounded text-white m-auto ${
+                      pt.completed ? "bg-gray-500" : "bg-blue-600"
+                    }`}
+                    onClick={removeExercise}
+                  >
+                    Remove
                   </button>
                   {/* Dropdown */}
                   {open && (
@@ -141,7 +188,7 @@ export default function DoctorComponent() {
                             key={id}
                             className="hover:bg-gray-300 px-4 py-1 "
                             onMouseEnter={() => {
-                              setAddExerciseObj({ id: ex.id, title: ex.title });
+                              setExerciseObj({ id: ex.id, title: ex.title });
                             }}
                           >
                             {ex.title}
@@ -168,7 +215,7 @@ export default function DoctorComponent() {
                 setCurrPatient(pt.id);
                 if (currPatient == pt.id) {
                   setCurrPatient(null);
-                  setAddExerciseObj({ id: null, title: "" });
+                  setExerciseObj({ id: null, title: "" });
                 }
               }}
             >

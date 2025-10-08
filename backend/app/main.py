@@ -81,11 +81,20 @@ async def health():
     return {"status": "Healthy!"}
 
 
+# Path to the built React app
+REACT_DIST_DIR = os.path.join(os.path.dirname(os.path.dirname(__file__)), "dist")
+ASSETS_DIR = os.path.join(REACT_DIST_DIR, "assets")
+
 # Mount the React build folder
-app.mount("/", StaticFiles(directory="dist/", html=True), name="static")
+app.mount("/assets", StaticFiles(directory=ASSETS_DIR), name="assets")
+
+@app.get("/")
+async def serve_root():
+    return FileResponse(os.path.join(REACT_DIST_DIR, "index.html"))
+
 @app.get("/{full_path:path}")
-async def serve_react_app():
-    return FileResponse("dist/index.html")
+async def serve_react_app(full_path: str):
+    return FileResponse(os.path.join(REACT_DIST_DIR, "index.html"))
 
 
 if __name__ == "__main__":
