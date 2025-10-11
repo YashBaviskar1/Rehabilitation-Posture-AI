@@ -1,6 +1,7 @@
 import axios from "axios";
 import { CheckCircle, Clock, User } from "lucide-react";
 import { useEffect, useState } from "react";
+import ScoreLineChart from "./GraphComponent";
 const isDev = import.meta.env.MODE == "development";
 
 export default function DoctorComponent() {
@@ -8,6 +9,7 @@ export default function DoctorComponent() {
   const [exercises, setExercises] = useState([]);
   const [open, setOpen] = useState(false);
   const [currPatient, setCurrPatient] = useState(null);
+  const [showPatientId, setShowPatientId] = useState(null);
   const [exerciseObj, setExerciseObj] = useState({
     id: null,
     title: "",
@@ -114,17 +116,33 @@ export default function DoctorComponent() {
 
   return (
     <>
+      {showPatientId && (
+        <PatientScoreGraph
+          patient_id={showPatientId}
+          setShowPatientId={setShowPatientId}
+        />
+      )}
       <h3 className="text-xl font-bold mb-4">Patient Records</h3>
       {/* Patients container */}
       <div className="grid grid-cols-2 gap-6 lg:grid-cols-3">
         {patients.map((pt) => (
           <div
             key={pt.id}
-            className="p-4 border rounded-xl bg-white shadow-sm border-gray-300"
+            className="p-4 h-fit border rounded-xl bg-white shadow-sm border-gray-300"
           >
-            <div className="flex justify-between items-start">
+            <div className="w-full">
               <div>
-                <h1 className="font-bold text-xl">{pt.username}</h1>
+                <div className="flex justify-between">
+                  <p className="font-bold text-2xl">{pt.username}</p>
+                  <button
+                    className="bg-cyan-500 rounded-md text-white px-4"
+                    onClick={() => {
+                      setShowPatientId(pt.id);
+                    }}
+                  >
+                    Progress
+                  </button>
+                </div>
                 <p>
                   <strong>Age: </strong>
                   {pt.age}
@@ -225,5 +243,83 @@ export default function DoctorComponent() {
         ))}
       </div>
     </>
+  );
+}
+
+function PatientScoreGraph({ patient_id, setShowPatientId }) {
+  const [scores, setScores] = useState();
+
+  async function getScores() {
+    const monthNames = [
+      "Jan",
+      "Feb",
+      "Mar",
+      "Apr",
+      "May",
+      "Jun",
+      "Jul",
+      "Aug",
+      "Sep",
+      "Oct",
+      "Nov",
+      "Dec",
+    ];
+
+    await axios
+      .get(
+        `${
+          isDev ? "http://localhost:8000" : ""
+        }/api/scores/patient/${patient_id}`,
+        {
+          withCredentials: true,
+        }
+      )
+      .then((res) => {
+        console.log("Get Scores Doctor Dashboard:\n");
+        console.log(res.data);
+        let tempScores = res.data;
+        tempScores.forEach((__, i) => {
+          const dateObj = new Date(__.timestamp);
+
+          const date = dateObj.getDate(); // day of the month (1-31)
+          const hours = dateObj.getHours();
+          const minutes = dateObj.getMinutes().toString().padStart(2, "0");
+
+          const formatted = `${date} ${
+            monthNames[dateObj.getMonth()]
+          }: ${hours}:${minutes}`;
+
+          __.timestamp = formatted;
+        });
+        setScores(tempScores);
+      })
+      .catch((error) => {
+        console.log("Get Scores Doctor Dashboard:\n");
+        console.log(error);
+      });
+  }
+
+  useEffect(() => {
+    getScores();
+  }, []);
+
+  return (
+    <section className="w-full h-full z-50 fixed top-0 left-0 backdrop:blur bg-black/80">
+      <div className="m-auto md:w-[75%] lg:w-[60%] mt-24">
+        {scores && (
+          <div className="items-end flex flex-col">
+            <button
+              className=" text-white px-2 text-2xl font-medium"
+              onClick={() => {
+                setShowPatientId(null);
+              }}
+            >
+              X
+            </button>
+            <ScoreLineChart scores={scores} />
+          </div>
+        )}
+      </div>
+    </section>
   );
 }

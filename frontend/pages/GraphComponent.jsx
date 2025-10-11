@@ -11,7 +11,7 @@ import {
 
 export default function ScoreLineChart({ scores }) {
   return (
-    <div className="bg-white rounded-xl py-8">
+    <div className="bg-white rounded-xl py-8 min-w-[420px] w-full">
       <ResponsiveContainer width="100%" height={400}>
         <LineChart
           data={scores}

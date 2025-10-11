@@ -100,11 +100,10 @@ export default function PatientComponent({
         console.log("Get Scores:\n");
         console.log(res.data);
         let tempScores = res.data;
-        tempScores.forEach((_, i) => {
-          const dateObj = new Date(_.timestamp);
+        tempScores.forEach((__, i) => {
+          const dateObj = new Date(__.timestamp);
 
           const date = dateObj.getDate(); // day of the month (1-31)
-          const month = dateObj.getMonth(); // month (0-11) so +1 for 1-12
           const hours = dateObj.getHours();
           const minutes = dateObj.getMinutes().toString().padStart(2, "0");
 
@@ -112,7 +111,7 @@ export default function PatientComponent({
             monthNames[dateObj.getMonth()]
           }: ${hours}:${minutes}`;
 
-          _.timestamp = formatted;
+          __.timestamp = formatted;
         });
         setScores(tempScores);
       })
