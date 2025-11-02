@@ -26,13 +26,15 @@ async def analyze_pose(websocket: WebSocket):
     init_msg = await websocket.receive_text()
     try:
         config = json.loads(init_msg)
-        exercise = config.get("exercise")
+        exercise_id = config.get("exercise_id")
+        patient_id = config.get("patient_id")
+        timestamp = config.get("timestamp")
     except Exception:
         await websocket.send_text("ERROR: Invalid init message.")
         await websocket.close()
         return
 
-    print(f"\n\nAnalyzing exercise: {exercise}\n\n")
+    print(f"\n\nAnalyzing exercise: {exercise_id} for patient {patient_id} on {timestamp}\n\n")
     pose = mp_pose.Pose(min_detection_confidence=0.5, min_tracking_confidence=0.5)
     form_history = []
     start_time = time.time()
@@ -40,7 +42,7 @@ async def analyze_pose(websocket: WebSocket):
     try:
         while True:
             # Check 30-second timeout
-            if time.time() - start_time >= 10:
+            if time.time() - start_time >= 15:
                 break
 
             # Receive bytes from frontend

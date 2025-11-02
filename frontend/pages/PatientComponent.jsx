@@ -136,13 +136,17 @@ export default function PatientComponent({
   return (
     <>
       {exercise && (
-        <PatientExercise exercise={exercise} setExercise={setExercise} />
+        <PatientExercise
+          exercise={exercise}
+          setExercise={setExercise}
+          patient={patient}
+        />
       )}
       {!selectedExercise && (
         <>
           {/* Exercises List */}
           <section className="mb-8">
-            <h3 className="text-xl font-bold mb-4">Today's Exercises</h3>
+            <h3 className="text-xl font-bold mb-4">Exercises Assigned</h3>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
               {patient &&
                 patient.exercises.map((ex) => (
@@ -181,7 +185,7 @@ export default function PatientComponent({
                         !ex.title ? "bg-gray-500" : "bg-blue-600"
                       }`}
                       onClick={() => {
-                        setExercise(ex.title);
+                        setExercise(ex);
                       }}
                     >
                       {ex.completed ? "Practice Again" : "Start Exercise"}
@@ -191,9 +195,11 @@ export default function PatientComponent({
             </div>
           </section>
           {/* Scores Graph */}
-          <section className="">
-            <h1 className="text-xl font-bold mb-4">Score History</h1>
-            <ScoreLineChart scores={scores} />
+          <h1 className="text-xl font-bold mb-4 ">Score History</h1>
+          <section className="flex justify-center">
+            <div className="xl:w-[70%] w-full">
+              <ScoreLineChart scores={scores} />
+            </div>
           </section>
         </>
       )}
@@ -272,16 +278,43 @@ export default function PatientComponent({
   );
 }
 
-function PatientExercise({ exercise, setExercise }) {
+function PatientExercise({ exercise, setExercise, patient }) {
   const [score, setScore] = useState();
   const [ws, setWs] = useState(null);
   const imgRef = useRef(null);
   const displayRef = useRef(null);
 
   const camDim = {
-    height: 640,
-    width: 640,
+    height: 480,
+    width: 720,
   };
+
+  async function assignScore() {
+    const addScorePayload = {
+      exercise_id: exercise.id,
+      patient_id: patient.id,
+      timestamp: new Date().getTime(),
+      score: Math.floor(score),
+    };
+
+    await axios
+      .post(
+        `${isDev ? "http://localhost:8000" : ""}/api/scores/add`,
+        addScorePayload,
+        {
+          withCredentials: true,
+        }
+      )
+      .then((res) => {
+        console.log("Add Score:\n");
+        console.log(res.data);
+        window.location.reload();
+      })
+      .catch((error) => {
+        console.log("Add Score:\n");
+        console.log(error);
+      });
+  }
 
   useEffect(() => {
     const socket = new WebSocket("ws://localhost:8000/api/pose/ws/analyze");
@@ -300,7 +333,13 @@ function PatientExercise({ exercise, setExercise }) {
 
     socket.onopen = () => {
       // Send exercise type first
-      socket.send(JSON.stringify({ exercise }));
+      socket.send(
+        JSON.stringify({
+          exercise_id: exercise.id,
+          patient_id: patient.id,
+          timestamp: new Date().getTime(),
+        })
+      );
     };
 
     return () => socket.close();
@@ -324,11 +363,14 @@ function PatientExercise({ exercise, setExercise }) {
     return () => clearInterval(interval);
   }, [ws]);
 
-  async function getScores() {}
-
   useEffect(() => {
-    // getScores();
-  }, []);
+    if (!score) {
+      console.log("No score yet");
+      return;
+    }
+
+    assignScore();
+  }, [score]);
 
   return (
     <section className="w-full h-full z-50 fixed top-0 left-0 backdrop:blur bg-black/80">
@@ -364,15 +406,24 @@ function PatientExercise({ exercise, setExercise }) {
               opacity: 0,
             }}
           />
+          {/* Score Display */}
+          {score && (
+            <div className="text-white bg-green-500 px-4 py-2 my-4 rounded-sm w-[50%] text-2xl text-center">
+              Excercise Completed
+              <br />
+              Final Score: {score}
+            </div>
+          )}
           {/* Processed output from backend */}
           <img
             ref={displayRef}
             alt="Processed Frame"
             style={{ width: camDim.width }}
           />
-          <button className="text-white bg-blue-500 px-4 py-2 mt-4 rounded-sm w-[50%]">
+
+          {/* <button className="text-white bg-blue-500 px-4 py-2 mt-4 rounded-sm w-[50%]">
             Toggle
-          </button>
+          </button> */}
         </div>
       </div>
     </section>
