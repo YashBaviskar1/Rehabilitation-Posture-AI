@@ -1,6 +1,7 @@
 import axios from "axios";
 import { CheckCircle, Clock, User } from "lucide-react";
 import { useEffect, useState } from "react";
+import ScoreLineChart from "./GraphComponent";
 const isDev = import.meta.env.MODE == "development";
 
 export default function DoctorComponent() {
@@ -8,7 +9,12 @@ export default function DoctorComponent() {
   const [exercises, setExercises] = useState([]);
   const [open, setOpen] = useState(false);
   const [currPatient, setCurrPatient] = useState(null);
-  const [addExerciseObj, setAddExerciseObj] = useState({
+  const [showPatientId, setShowPatientId] = useState(null);
+  const [exerciseObj, setExerciseObj] = useState({
+    id: null,
+    title: "",
+  });
+  const [removeExerciseObj, setRemoveExerciseObj] = useState({
     id: null,
     title: "",
   });
@@ -48,7 +54,7 @@ export default function DoctorComponent() {
   async function addExercise() {
     const addExercisePayload = {
       patient_id: currPatient,
-      exercise_ids: [addExerciseObj.id],
+      exercise_ids: [exerciseObj.id],
     };
 
     await axios
@@ -62,9 +68,43 @@ export default function DoctorComponent() {
       .then((res) => {
         console.log("Add Exercises Dashboard:\n");
         console.log(res.data);
+        window.location.reload();
       })
       .catch((error) => {
         console.log("Add Exercises Dashboard:\n");
+        console.log(error);
+      });
+  }
+
+  async function removeExercise() {
+    const removeExercisePayload = {
+      patient_id: currPatient,
+      exercise_ids: [exerciseObj.id],
+    };
+
+    await axios
+      .delete(
+        `${isDev ? "http://localhost:8000" : ""}/api/exercises/deassign`,
+        {
+          data: removeExercisePayload,
+          withCredentials: true,
+        }
+      )
+      .then((res) => {
+        console.log("Remove Exercises Dashboard:\n");
+        console.log(res.data);
+        window.location.reload();
+      })
+      .catch((error) => {
+        if (
+          error.response.data.detail.includes(
+            "one of the given exercises are assigned to this user"
+          )
+        ) {
+          window.alert(error.response.data.detail);
+          return;
+        }
+        console.log("Remove Exercises Dashboard:\n");
         console.log(error);
       });
   }
@@ -76,17 +116,33 @@ export default function DoctorComponent() {
 
   return (
     <>
+      {showPatientId && (
+        <PatientScoreGraph
+          patient_id={showPatientId}
+          setShowPatientId={setShowPatientId}
+        />
+      )}
       <h3 className="text-xl font-bold mb-4">Patient Records</h3>
       {/* Patients container */}
       <div className="grid grid-cols-2 gap-6 lg:grid-cols-3">
         {patients.map((pt) => (
           <div
             key={pt.id}
-            className="p-4 border rounded-xl bg-white shadow-sm border-gray-300"
+            className="p-4 h-fit border rounded-xl bg-white shadow-sm border-gray-300"
           >
-            <div className="flex justify-between items-start">
+            <div className="w-full">
               <div>
-                <h1 className="font-bold text-xl">{pt.username}</h1>
+                <div className="flex justify-between">
+                  <p className="font-bold text-2xl">{pt.username}</p>
+                  <button
+                    className="bg-cyan-500 rounded-md text-white px-4"
+                    onClick={() => {
+                      setShowPatientId(pt.id);
+                    }}
+                  >
+                    Progress
+                  </button>
+                </div>
                 <p>
                   <strong>Age: </strong>
                   {pt.age}
@@ -104,11 +160,12 @@ export default function DoctorComponent() {
               </p>
               {currPatient == pt.id && (
                 <div className="bg-gray-200 flex flex-wrap pl-1 py-2 rounded-md gap-2 relative">
-                  <p className="font-bold p-[0.5px]">Add Exercises: </p>
+                  {/* Add Exercises Section */}
+                  <p className="font-bold p-[0.5px]">Exercises: </p>
                   <input
                     placeholder="Exercise IDs"
-                    className=" border-gray-500 m-auto border-2 border-solid p-[0.5px]"
-                    value={addExerciseObj.title}
+                    className=" border-gray-500 m-auto border-2 border-solid p-[0.5px] w-full"
+                    value={exerciseObj.title}
                     readOnly
                     onFocus={() => {
                       setOpen(true);
@@ -124,6 +181,14 @@ export default function DoctorComponent() {
                     onClick={addExercise}
                   >
                     Add
+                  </button>
+                  <button
+                    className={`w-[25%] rounded text-white m-auto ${
+                      pt.completed ? "bg-gray-500" : "bg-blue-600"
+                    }`}
+                    onClick={removeExercise}
+                  >
+                    Remove
                   </button>
                   {/* Dropdown */}
                   {open && (
@@ -141,7 +206,7 @@ export default function DoctorComponent() {
                             key={id}
                             className="hover:bg-gray-300 px-4 py-1 "
                             onMouseEnter={() => {
-                              setAddExerciseObj({ id: ex.id, title: ex.title });
+                              setExerciseObj({ id: ex.id, title: ex.title });
                             }}
                           >
                             {ex.title}
@@ -168,7 +233,7 @@ export default function DoctorComponent() {
                 setCurrPatient(pt.id);
                 if (currPatient == pt.id) {
                   setCurrPatient(null);
-                  setAddExerciseObj({ id: null, title: "" });
+                  setExerciseObj({ id: null, title: "" });
                 }
               }}
             >
@@ -178,5 +243,83 @@ export default function DoctorComponent() {
         ))}
       </div>
     </>
+  );
+}
+
+function PatientScoreGraph({ patient_id, setShowPatientId }) {
+  const [scores, setScores] = useState();
+
+  async function getScores() {
+    const monthNames = [
+      "Jan",
+      "Feb",
+      "Mar",
+      "Apr",
+      "May",
+      "Jun",
+      "Jul",
+      "Aug",
+      "Sep",
+      "Oct",
+      "Nov",
+      "Dec",
+    ];
+
+    await axios
+      .get(
+        `${
+          isDev ? "http://localhost:8000" : ""
+        }/api/scores/patient/${patient_id}`,
+        {
+          withCredentials: true,
+        }
+      )
+      .then((res) => {
+        console.log("Get Scores Doctor Dashboard:\n");
+        console.log(res.data);
+        let tempScores = res.data;
+        tempScores.forEach((__, i) => {
+          const dateObj = new Date(__.timestamp);
+
+          const date = dateObj.getDate(); // day of the month (1-31)
+          const hours = dateObj.getHours();
+          const minutes = dateObj.getMinutes().toString().padStart(2, "0");
+
+          const formatted = `${date} ${
+            monthNames[dateObj.getMonth()]
+          }: ${hours}:${minutes}`;
+
+          __.timestamp = formatted;
+        });
+        setScores(tempScores);
+      })
+      .catch((error) => {
+        console.log("Get Scores Doctor Dashboard:\n");
+        console.log(error);
+      });
+  }
+
+  useEffect(() => {
+    getScores();
+  }, []);
+
+  return (
+    <section className="w-full h-full z-50 fixed top-0 left-0 backdrop:blur bg-black/80">
+      <div className="m-auto md:w-[75%] lg:w-[60%] mt-24">
+        {scores && (
+          <div className="items-end flex flex-col">
+            <button
+              className=" text-white px-2 text-2xl font-medium"
+              onClick={() => {
+                setShowPatientId(null);
+              }}
+            >
+              X
+            </button>
+            <ScoreLineChart scores={scores} />
+          </div>
+        )}
+      </div>
+    </section>
   );
 }
