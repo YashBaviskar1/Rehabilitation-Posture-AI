@@ -11,7 +11,7 @@ from datetime import datetime, timedelta
 from typing import Optional
 from dotenv import load_dotenv
 from app import models, schemas, db
-from app.api import authentication, users, exercises, image_processing, scores
+from app.api import authentication, users, exercises, image_processing, scores, pose_net
 import uvicorn
 import os
 load_dotenv()
@@ -77,6 +77,8 @@ app.include_router(prefix="/api", router=exercises.router)
 app.include_router(prefix="/api", router=image_processing.router)
 
 app.include_router(prefix="/api", router=scores.router)
+
+app.include_router(prefix="/api", router=pose_net.router)
 
 @app.get("/health")
 async def health():

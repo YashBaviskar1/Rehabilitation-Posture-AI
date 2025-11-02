@@ -26,9 +26,15 @@ async def get_patient_score(patient_id: int, user: models.User = Depends(get_cur
     if user.role != "doctor" and user.id != patient.id:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="You are not authorised for this")
     
-    scores: list[models.UserExerciseScore] = db.query(models.UserExerciseScore).filter(models.UserExerciseScore.user_id == patient_id).all()
+    scores: list[models.UserExerciseScore] = (
+        db.query(models.UserExerciseScore)
+            .filter(models.UserExerciseScore.user_id == patient_id)
+            .order_by(models.UserExerciseScore.timestamp.desc())
+            .limit(7)
+            .all()
+        )
 
-    return [{"timestamp": sc.timestamp, "score": sc.score} for sc in scores]
+    return [{"timestamp": sc.timestamp, "score": sc.score, "exercise": sc.exercise.title} for sc in scores][::-1]
 
 @router.post("/add")
 async def store_patient_score(request_data: schemas.Add_New_Score, user: models.User = Depends(get_current_user), db: Session = Depends(get_db)):

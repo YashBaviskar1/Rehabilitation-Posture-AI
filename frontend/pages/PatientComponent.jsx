@@ -16,9 +16,10 @@ import {
   ChevronRight,
   LogOut,
 } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import axios from "axios";
 import ScoreLineChart from "./GraphComponent";
+import Webcam from "react-webcam";
 const isDev = import.meta.env.MODE == "development";
 
 export default function PatientComponent({
@@ -61,6 +62,7 @@ export default function PatientComponent({
   const [isExercising, setIsExercising] = useState(false);
   const [patient, setPatient] = useState(null);
   const [scores, setScores] = useState([]);
+  const [exercise, setExercise] = useState(null);
 
   const handleStartExercise = (id) => {
     setSelectedExercise(id);
@@ -109,7 +111,7 @@ export default function PatientComponent({
 
           const formatted = `${date} ${
             monthNames[dateObj.getMonth()]
-          }: ${hours}:${minutes}`;
+          }: ${hours}:${minutes}, ${__.exercise}`;
 
           __.timestamp = formatted;
         });
@@ -133,6 +135,9 @@ export default function PatientComponent({
 
   return (
     <>
+      {exercise && (
+        <PatientExercise exercise={exercise} setExercise={setExercise} />
+      )}
       {!selectedExercise && (
         <>
           {/* Exercises List */}
@@ -175,6 +180,9 @@ export default function PatientComponent({
                       className={`mt-3 w-full py-2 px-4 rounded text-white ${
                         !ex.title ? "bg-gray-500" : "bg-blue-600"
                       }`}
+                      onClick={() => {
+                        setExercise(ex.title);
+                      }}
                     >
                       {ex.completed ? "Practice Again" : "Start Exercise"}
                     </button>
@@ -261,5 +269,112 @@ export default function PatientComponent({
         </section>
       )}
     </>
+  );
+}
+
+function PatientExercise({ exercise, setExercise }) {
+  const [score, setScore] = useState();
+  const [ws, setWs] = useState(null);
+  const imgRef = useRef(null);
+  const displayRef = useRef(null);
+
+  const camDim = {
+    height: 640,
+    width: 640,
+  };
+
+  useEffect(() => {
+    const socket = new WebSocket("ws://localhost:8000/api/pose/ws/analyze");
+    setWs(socket);
+
+    socket.onmessage = (event) => {
+      if (typeof event.data === "string" && event.data.startsWith("SCORE:")) {
+        const finalScore = parseFloat(event.data.replace("SCORE:", ""));
+        setScore(finalScore);
+      } else {
+        const blob = new Blob([event.data], { type: "image/jpeg" });
+        const url = URL.createObjectURL(blob);
+        displayRef.current.src = url;
+      }
+    };
+
+    socket.onopen = () => {
+      // Send exercise type first
+      socket.send(JSON.stringify({ exercise }));
+    };
+
+    return () => socket.close();
+  }, []);
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      if (!ws || ws.readyState !== WebSocket.OPEN) return;
+
+      const imageSrc = imgRef.current.getScreenshot(); // base64 JPEG
+
+      if (imageSrc) {
+        // Convert base64 to binary and send over WebSocket
+        fetch(imageSrc)
+          .then((res) => res.blob())
+          .then((blob) => blob.arrayBuffer())
+          .then((buffer) => ws.send(buffer));
+      }
+    }, 100); // ~10 FPS
+
+    return () => clearInterval(interval);
+  }, [ws]);
+
+  async function getScores() {}
+
+  useEffect(() => {
+    // getScores();
+  }, []);
+
+  return (
+    <section className="w-full h-full z-50 fixed top-0 left-0 backdrop:blur bg-black/80">
+      <div className="m-auto md:w-[75%] lg:w-[60%] mt-24">
+        <div className="flex flex-col items-center">
+          {/* Close Button */}
+          <button
+            className=" text-white px-2 text-2xl font-medium ml-auto"
+            onClick={() => {
+              setExercise(null);
+            }}
+          >
+            X
+          </button>
+
+          {/* Webcam Component */}
+          <Webcam
+            audio={false}
+            ref={imgRef}
+            mirrored={true}
+            screenshotFormat="image/jpeg"
+            screenshotQuality={0.7}
+            width={camDim.width}
+            height={camDim.height}
+            videoConstraints={{
+              ...camDim,
+              facingMode: "user", // use "environment" for rear camera on mobile
+            }}
+            style={{
+              position: "absolute",
+              top: "0", // way off-screen
+              left: "0",
+              opacity: 0,
+            }}
+          />
+          {/* Processed output from backend */}
+          <img
+            ref={displayRef}
+            alt="Processed Frame"
+            style={{ width: camDim.width }}
+          />
+          <button className="text-white bg-blue-500 px-4 py-2 mt-4 rounded-sm w-[50%]">
+            Toggle
+          </button>
+        </div>
+      </div>
+    </section>
   );
 }
