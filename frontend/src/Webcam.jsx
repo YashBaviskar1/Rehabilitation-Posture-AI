@@ -21,8 +21,8 @@ export default function WebcamComponent({
   const [isProcessing, setIsProcessing] = useState(false);
 
   const videoConstraints = {
-    width: 480,
-    height: 480,
+    width: 320,
+    height: 240,
     facingMode: "user",
   };
 
@@ -54,7 +54,7 @@ export default function WebcamComponent({
   useEffect(() => {
     if (isProcessing) {
       // Start interval
-      intervalRef.current = setInterval(captureAndProcess, 40);
+      intervalRef.current = setInterval(captureAndProcess, 62);
       console.log("Starting interval");
     } else {
       // Stop interval if it exists
@@ -74,14 +74,17 @@ export default function WebcamComponent({
   }, [isProcessing]);
 
   return (
-    <div className="flex flex-col mt-[50px]">
+    <div className="flex flex-col mt-[50px] justify-center gap-1">
       <h2 className="text-white w-full text-center">Live Video</h2>
       <Webcam
         ref={webcamRef}
+        className="border-2 border-white m-auto"
         audio={false}
         height={videoConstraints.height}
         width={videoConstraints.width}
         videoConstraints={videoConstraints}
+        screenshotFormat="image/webp"
+        screenshotQuality={0.3}
         onUserMediaError={(err) => {
           console.error("Webcam error:", err);
         }}
@@ -95,12 +98,12 @@ export default function WebcamComponent({
         Analyse
       </button>
 
-      <div className="text-2xl text-red-500 my-10 mx-4">
+      {/* <div className="text-2xl text-red-500 my-10 mx-4">
         Error: {processError}
-      </div>
+      </div> */}
 
-      <div className="flex gap-4 my-10 mx-4">
-        {originaImage && (
+      <div className="flex flex-col items-center gap-4 my-10 mx-4">
+        {originaImage && false && (
           <>
             {/* <h2>Original Image</h2> */}
             <img

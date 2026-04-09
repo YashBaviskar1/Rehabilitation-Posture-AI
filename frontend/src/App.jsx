@@ -6,7 +6,6 @@ const WEBSOCKET_URL = import.meta.env.VITE_WEBSOCKET_URL;
 export default function App() {
   const websocketRef = useRef(null);
 
-  const [text, setText] = useState("");
   const [processedImage, setProcessedImage] = useState(tempImg);
   const [processError, setProcessError] = useState("");
   const webcamRef = useRef(null);
@@ -49,17 +48,19 @@ export default function App() {
 
         // Convert base64 to binary to send efficiently
         const imageSrc = webcamRef.current.getScreenshot();
-        console.log("Getting getScreenshot");
-        const base64Data = imageSrc.split(",")[1]; // Remove data prefix
-        const byteCharacters = atob(base64Data);
-        const byteNumbers = new Array(byteCharacters.length);
-        for (let i = 0; i < byteCharacters.length; i++) {
-          byteNumbers[i] = byteCharacters.charCodeAt(i);
-        }
-        const byteArray = new Uint8Array(byteNumbers);
+        if (imageSrc) {
+          console.log("Getting getScreenshot");
+          const base64Data = imageSrc.split(",")[1]; // Remove data prefix
+          const byteCharacters = atob(base64Data);
+          const byteNumbers = new Array(byteCharacters.length);
+          for (let i = 0; i < byteCharacters.length; i++) {
+            byteNumbers[i] = byteCharacters.charCodeAt(i);
+          }
+          const byteArray = new Uint8Array(byteNumbers);
 
-        websocketRef.current.send(byteArray.buffer); // Send as ArrayBuffer
-        console.log("Initial photo sent");
+          websocketRef.current.send(byteArray.buffer); // Send as ArrayBuffer
+          console.log("Initial photo sent");
+        }
       }
     };
 

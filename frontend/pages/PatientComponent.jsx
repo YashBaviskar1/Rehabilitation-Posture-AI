@@ -317,7 +317,10 @@ function PatientExercise({ exercise, setExercise, patient }) {
   }
 
   useEffect(() => {
-    const socket = new WebSocket("ws://localhost:8000/api/pose/ws/analyze");
+    // const socket = new WebSocket("ws://localhost:8000/api/pose/ws/analyze");
+    const socket = new WebSocket(
+      `${isDev ? "http://localhost:8000" : ""}/api/pose/ws/analyze`
+    );
     setWs(socket);
 
     socket.onmessage = (event) => {
@@ -364,7 +367,7 @@ function PatientExercise({ exercise, setExercise, patient }) {
   }, [ws]);
 
   useEffect(() => {
-    if (!score) {
+    if (score == null) {
       console.log("No score yet");
       return;
     }
